@@ -115,7 +115,7 @@ async def checkmods(interaction: discord.Interaction):
             except discord.NotFound:
                 break
             except Exception as e:
-                print(f"Error en periodic_check: {e}")
+                print(f"Error in periodic_check: {e}")
                 break
             await asyncio.sleep(60)
 
