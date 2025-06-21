@@ -29,7 +29,7 @@ PRESENCE_TYPES = {
 
 ALL_MODS = {
     "Chase": [22808138, 4782733628, 7447190808, 3196162848],
-    "Orion": [547598710, 5728889572, 4652232128, 7043591647, 4149966999, 7209929547, 7043958628, 7418525152, ],
+    "Orion": [547598710, 5728889572, 4652232128, 7043591647, 4149966999, 7209929547, 7043958628, 7418525152],
     "LisNix": [162442297, 702354331],
     "Nwr": [307212658, 5097000699, 4923561416],
     "Gorilla": [514679433, 2431747703, 4531785383],
@@ -49,7 +49,7 @@ class MyClient(discord.Client):
         self.checking_task = None
 
     async def on_ready(self):
-        print(f"Bot {self.user} ({self.user.id})")
+        print(f"Bot connected as {self.user} ({self.user.id})")
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -58,7 +58,7 @@ class MyClient(discord.Client):
         all_user_ids = list({uid for ids in ALL_MODS.values() for uid in ids})
         response = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": all_user_ids})
         if response.status_code != 200:
-            return "Error."
+            return "Error at obtaining presence."
 
         presences = response.json().get("userPresences", [])
         presence_dict = {user["userId"]: user["userPresenceType"] for user in presences}
@@ -96,45 +96,40 @@ client = MyClient()
 
 @client.tree.command(name="mods", description="Shows if a mod is online")
 async def mods(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await interaction.response.defer(thinking=True)
     content = await client.build_mod_status()
     await interaction.followup.send(content)
 
 @client.tree.command(name="checkmods", description="Checks mods every minute")
 async def checkmods(interaction: discord.Interaction):
-    print("[checkmods] Executed command.")
-    await interaction.response.send_message("Started checking...", ephemeral=False)
-    message = await interaction.original_response()
+    await interaction.response.defer(thinking=True)
+    message = await interaction.followup.send("Started checking...")
 
     async def periodic_check(msg):
         current_msg = msg
         while True:
             try:
-                print("[checkmods] Calling a build_mod_status()...")
                 content = await client.build_mod_status()
-                print("[checkmods] build_mod_status() returned, trying to delete message...")
                 await current_msg.delete()
-                print("[checkmods] Menssage deleted, sending again...")
                 current_msg = await msg.channel.send(content)
-                print("[checkmods] Message sent.")
             except Exception as e:
                 print(f"[checkmods] Error in periodic_check: {e}")
                 break
             await asyncio.sleep(60)
 
     if client.checking_task is None or client.checking_task.done():
-        print("[checkmods] Iniciando periodic_check como tarea.")
         client.checking_task = asyncio.create_task(periodic_check(message))
     else:
         await interaction.followup.send("The checking is already active.")
 
 @client.tree.command(name="stopcheck", description="Stops the check from the command /checkmods")
 async def stopcheck(interaction: discord.Interaction):
+    await interaction.response.defer()
     if client.checking_task and not client.checking_task.done():
         client.checking_task.cancel()
-        await interaction.response.send_message("Stopped checking.")
+        await interaction.followup.send("Stopped checking.")
     else:
-        await interaction.response.send_message("No current check.")
+        await interaction.followup.send("No current check running.")
 
 keep_alive()
 
