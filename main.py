@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-import requests
+import aiohttp
 import asyncio
 import datetime
 import os
@@ -49,48 +49,56 @@ class MyClient(discord.Client):
         self.checking_task = None
 
     async def on_ready(self):
-        print(f" Bot connected as {self.user} ({self.user.id})")
+        print(f"Bot conected as {self.user} ({self.user.id})")
 
     async def setup_hook(self):
         await self.tree.sync()
 
     async def build_mod_status(self) -> str:
         all_user_ids = list({uid for ids in ALL_MODS.values() for uid in ids})
-        response = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": all_user_ids})
-        if response.status_code != 200:
-            return "Error obtaining presence."
 
-        presences = response.json().get("userPresences", [])
-        presence_dict = {user["userId"]: user["userPresenceType"] for user in presences}
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://presence.roblox.com/v1/presence/users", json={"userIds": all_user_ids}) as resp:
+                if resp.status != 200:
+                    return "Error obtaining presence."
+                data = await resp.json()
 
-        message_lines = []
-        any_in_game = False
+            presences = data.get("userPresences", [])
+            presence_dict = {user["userId"]: user["userPresenceType"] for user in presences}
 
-        for mod_name, user_ids in ALL_MODS.items():
-            message_lines.append(f"**{mod_name}**")
-            for uid in user_ids:
-                presence_code = presence_dict.get(uid, 0)
-                user_info = requests.get(f"https://users.roblox.com/v1/users/{uid}")
-                username = user_info.json().get("name", "Unknown") if user_info.status_code == 200 else "Unknown"
+            message_lines = []
+            any_in_game = False
 
-                if presence_code == 1:
-                    line = f"```ini\n[Online]: {username}\n```"
-                elif presence_code == 2:
-                    line = f"```diff\n+ In Game: {username}\n```"
-                    any_in_game = True
-                elif presence_code == 3:
-                    line = f"```fix\nIn Studio: {username}\n```"
-                else:
-                    line = f"```diff\n- Offline: {username}\n```"
-                message_lines.append(line)
-            message_lines.append("")
+            for mod_name, user_ids in ALL_MODS.items():
+                message_lines.append(f"**{mod_name}**")
+                for uid in user_ids:
+                    async with session.get(f"https://users.roblox.com/v1/users/{uid}") as user_resp:
+                        if user_resp.status == 200:
+                            user_data = await user_resp.json()
+                            username = user_data.get("name", "Unknown")
+                        else:
+                            username = "Unknown"
 
-        status_line = "**Status: Unalt Farmable**" if any_in_game else "**Status: Farmable**"
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        message_lines.append(status_line)
-        message_lines.append(f"*Last update: {timestamp}*")
+                    presence_code = presence_dict.get(uid, 0)
 
-        return "\n".join(message_lines)
+                    if presence_code == 1:
+                        line = f"```ini\n[Online]: {username}\n```"
+                    elif presence_code == 2:
+                        line = f"```diff\n+ In Game: {username}\n```"
+                        any_in_game = True
+                    elif presence_code == 3:
+                        line = f"```fix\nIn Studio: {username}\n```"
+                    else:
+                        line = f"```diff\n- Offline: {username}\n```"
+                    message_lines.append(line)
+                message_lines.append("")
+
+            status_line = "**Status: Unalt Farmable**" if any_in_game else "**Status: Alt Farmable**"
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            message_lines.append(status_line)
+            message_lines.append(f"*Last update: {timestamp}*")
+
+            return "\n".join(message_lines)
 
 client = MyClient()
 
