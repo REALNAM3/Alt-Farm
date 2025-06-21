@@ -11,7 +11,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "I'm alt farming!"
+    return "I'm alive!"
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -49,7 +49,7 @@ class MyClient(discord.Client):
         self.checking_task = None
 
     async def on_ready(self):
-        print(f"Bot connected as {self.user} ({self.user.id})")
+        print(f" Bot connected as {self.user} ({self.user.id})")
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -58,7 +58,7 @@ class MyClient(discord.Client):
         all_user_ids = list({uid for ids in ALL_MODS.values() for uid in ids})
         response = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": all_user_ids})
         if response.status_code != 200:
-            return "Error at obtaining presence."
+            return "Error obtaining presence."
 
         presences = response.json().get("userPresences", [])
         presence_dict = {user["userId"]: user["userPresenceType"] for user in presences}
