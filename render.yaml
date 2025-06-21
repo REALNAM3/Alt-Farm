@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: discord-bot-flask
+    env: python
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python your_bot_file.py
+    envVars:
+      - key: BOT_TOKEN
+        fromSecret: BOT_TOKEN_SECRET
