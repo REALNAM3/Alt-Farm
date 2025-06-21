@@ -106,11 +106,16 @@ async def checkmods(interaction: discord.Interaction):
     message = await interaction.original_response()
 
     async def periodic_check(msg):
+        current_msg = msg
         while True:
             content = await client.build_mod_status()
             try:
-                await msg.edit(content=content)
+                await current_msg.delete()
+                current_msg = await interaction.channel.send(content)
             except discord.NotFound:
+                break
+            except Exception as e:
+                print(f"Error en periodic_check: {e}")
                 break
             await asyncio.sleep(60)
 
