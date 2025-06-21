@@ -102,24 +102,28 @@ async def mods(interaction: discord.Interaction):
 
 @client.tree.command(name="checkmods", description="Checks mods every minute")
 async def checkmods(interaction: discord.Interaction):
+    print("[checkmods] Executed command.")
     await interaction.response.send_message("Started checking...", ephemeral=False)
     message = await interaction.original_response()
 
     async def periodic_check(msg):
         current_msg = msg
         while True:
-            content = await client.build_mod_status()
             try:
+                print("[checkmods] Calling a build_mod_status()...")
+                content = await client.build_mod_status()
+                print("[checkmods] build_mod_status() returned, trying to delete message...")
                 await current_msg.delete()
-                current_msg = await interaction.channel.send(content)
-            except discord.NotFound:
-                break
+                print("[checkmods] Menssage deleted, sending again...")
+                current_msg = await msg.channel.send(content)
+                print("[checkmods] Message sent.")
             except Exception as e:
-                print(f"Error in periodic_check: {e}")
+                print(f"[checkmods] Error in periodic_check: {e}")
                 break
             await asyncio.sleep(60)
 
     if client.checking_task is None or client.checking_task.done():
+        print("[checkmods] Iniciando periodic_check como tarea.")
         client.checking_task = asyncio.create_task(periodic_check(message))
     else:
         await interaction.followup.send("The checking is already active.")
