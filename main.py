@@ -51,7 +51,7 @@ class MyClient(discord.Client):
         self.checking_task = None
 
     async def on_ready(self):
-        print(f"Bot conected as {self.user} ({self.user.id})")
+        print(f"Bot connected as {self.user} ({self.user.id})")
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -98,7 +98,7 @@ class MyClient(discord.Client):
             status_line = "**Status: Unalt Farmable**" if any_in_game else "**Status: Alt Farmable**"
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
             message_lines.append(status_line)
-            message_lines.append(f"*Last update: {timestamp}*")
+            message_lines.append(f"*Last Update: {timestamp}*")
 
             return "\n".join(message_lines)
 
@@ -140,6 +140,48 @@ async def stopcheck(interaction: discord.Interaction):
         await interaction.followup.send("Stopped checking.")
     else:
         await interaction.followup.send("No current check running.")
+
+@client.tree.command(name="modson", description="Checks if a mod is in game (In Game)")
+async def modson(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True)
+    all_user_ids = list({uid for ids in ALL_MODS.values() for uid in ids})
+    message_lines = []
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post("https://presence.roblox.com/v1/presence/users", json={"userIds": all_user_ids}) as resp:
+            if resp.status != 200:
+                await interaction.followup.send("Error obtaining presence.")
+                return
+            data = await resp.json()
+
+        presences = data.get("userPresences", [])
+        presence_dict = {user["userId"]: user for user in presences}
+
+        any_found = False
+        for mod_name, user_ids in ALL_MODS.items():
+            mod_lines = []
+            for uid in user_ids:
+                presence_info = presence_dict.get(uid)
+                if presence_info and presence_info["userPresenceType"] == 2:
+                    async with session.get(f"https://users.roblox.com/v1/users/{uid}") as user_resp:
+                        if user_resp.status == 200:
+                            user_data = await user_resp.json()
+                            username = user_data.get("name", "Unknown")
+                        else:
+                            username = "Unknown"
+                    mod_lines.append(f"```diff\n+ {username} (In Game)\n```")
+                    any_found = True
+            if mod_lines:
+                message_lines.append(f"**{mod_name}**")
+                message_lines.extend(mod_lines)
+                message_lines.append("")
+
+    if not any_found:
+        await interaction.followup.send("There are no mods currently.")
+    else:
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        message_lines.append(f"*Last Update: {timestamp}*")
+        await interaction.followup.send("\n".join(message_lines))
 
 keep_alive()
 
