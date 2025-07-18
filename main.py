@@ -171,6 +171,15 @@ async def modson(interaction: discord.Interaction):
                             username = "Unknown"
                     mod_lines.append(f"```diff\n+ {username} (In Game)\n```")
                     any_found = True
+                if presence_info and presence_info["userPresenceType"] == 1:
+                    async with session.get(f"https://users.roblox.com/v1/users/{uid}") as user_resp:
+                        if user_resp.status == 200:
+                            user_data = await user_resp.json()
+                            username = user_data.get("name", "Unknown")
+                        else:
+                            username = "Unknown"
+                    mod_lines.append(f"```ini\n[Online]: {username}\n```")
+                    any_found = True
             if mod_lines:
                 message_lines.append(f"**{mod_name}**")
                 message_lines.extend(mod_lines)
