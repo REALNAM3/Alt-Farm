@@ -244,7 +244,7 @@ async def modson(interaction: discord.Interaction):
                         if presence_info["userPresenceType"] == 2:
                             mod_lines.append(f"```diff\n+ In Game: {username} \n```")
                         else:
-                            mod_lines.append(f"```ini\n+ [Online]: {username}\n```")
+                            mod_lines.append(f"```ini\n[Online]: {username}\n```")
                         any_found = True
                 if mod_lines:
                     result_lines.append(f"**{mod_name}**")
