@@ -46,7 +46,7 @@ UNKNOWN_MODS = {
         7547477786, 7574577126, 2043525911, 5816563976, 240526951, 7587479685,
         1160595313, 7876617827, 7693766866, 2568824396, 7604102307, 7901878324,
         5087196317, 7187604802, 7495829767, 7718511355, 7928472983, 7922414080,
-        7758683476
+        7758683476, 8606089749
     ]
 }
 
@@ -242,7 +242,7 @@ async def modson(interaction: discord.Interaction):
                             else:
                                 username = "Unknown"
                         if presence_info["userPresenceType"] == 2:
-                            mod_lines.append(f"```diff\n+ In Game: {username} \n```")
+                            mod_lines.append(f"```diff\n[In Game]: {username} \n```")
                         else:
                             mod_lines.append(f"```ini\n[Online]: {username}\n```")
                         any_found = True
