@@ -163,6 +163,8 @@ client = MyClient()
 
 
 @client.tree.command(name="mods", description="Shows if a known mod is online")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def mods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     content = await client.build_known_mod_status()
@@ -170,6 +172,8 @@ async def mods(interaction: discord.Interaction):
 
 
 @client.tree.command(name="unknownmods", description="Shows if an unknown mod is online")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def unknownmods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     content = await client.build_unknown_mod_status()
@@ -177,6 +181,8 @@ async def unknownmods(interaction: discord.Interaction):
 
 
 @client.tree.command(name="checkmods", description="Checks known mods every minute")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def checkmods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     message = await interaction.followup.send("Started checking...")
@@ -200,6 +206,8 @@ async def checkmods(interaction: discord.Interaction):
 
 
 @client.tree.command(name="stopcheck", description="Stops the check from the command /checkmods")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def stopcheck(interaction: discord.Interaction):
     await interaction.response.defer()
     if client.checking_task and not client.checking_task.done():
@@ -210,6 +218,8 @@ async def stopcheck(interaction: discord.Interaction):
 
 
 @client.tree.command(name="modson", description="Checks if any mod (known or unknown) is in game")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def modson(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     all_user_ids = list({uid for ids in list(ALL_MODS.values()) + list(UNKNOWN_MODS.values()) for uid in ids})
