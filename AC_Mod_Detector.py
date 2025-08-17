@@ -177,8 +177,6 @@ async def unknownmods(interaction: discord.Interaction):
     await interaction.followup.send(content)
 
 @client.tree.command(name="checkmods", description="Checks known mods every minute")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def checkmods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     message = await interaction.followup.send("Started checking...")
@@ -245,7 +243,6 @@ async def modson(interaction: discord.Interaction):
                     uid_int = int(uid)
                     presence_info = presence_dict.get(uid_int)
                     if presence_info and presence_info["userPresenceType"] in [1, 2]:
-                        # Obtener username
                         try:
                             async with session.get(f"https://users.roblox.com/v1/users/{uid_int}") as user_resp:
                                 if user_resp.status == 200:
