@@ -1,6 +1,7 @@
 import discord
 import requests
 from discord import app_commands
+import os
 
 TOKEN = os.getenv("BOT_TOKEN2")
 ROBLOSECURITY = os.getenv("ROBLOXSECURITY")
