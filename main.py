@@ -221,21 +221,30 @@ async def modson(interaction: discord.Interaction):
     all_user_ids = list({uid for ids in list(ALL_MODS.values()) + list(UNKNOWN_MODS.values()) for uid in ids})
     message_lines = []
 
+    BATCH_SIZE = 100
+    presence_dict = {}
+
     async with aiohttp.ClientSession() as session:
-        async with session.post("https://presence.roblox.com/v1/presence/users", json={"userIds": all_user_ids}) as resp:
-            if resp.status != 200:
-                await interaction.followup.send("Error obtaining presence.")
-                return
-            data = await resp.json()
+        for i in range(0, len(all_user_ids), BATCH_SIZE):
+            batch = all_user_ids[i:i+BATCH_SIZE]
+            try:
+                async with session.post("https://presence.roblox.com/v1/presence/users", json={"userIds": batch}) as resp:
+                    if resp.status != 200:
+                        continue
+                    data = await resp.json()
+                    for user in data.get("userPresences", []):
+                        presence_dict[user["userId"]] = user
+            except Exception as e:
+                print(f"[modson] Error fetching batch: {e}")
 
-        presences = data.get("userPresences", [])
-        presence_dict = {user["userId"]: user for user in presences}
-
-        any_found = False
+        any_found_total = False
 
         async def process_mod_list(mod_list, label):
-            nonlocal any_found
-            result_lines = [f"__**{label}:**__"]
+            nonlocal any_found_total
+            result_lines = []
+            temp_lines = []
+            section_has_active = False
+
             for mod_name, user_ids in mod_list.items():
                 mod_lines = []
                 for uid in user_ids:
@@ -251,17 +260,23 @@ async def modson(interaction: discord.Interaction):
                             mod_lines.append(f"```diff\n+[In Game]: {username} \n```")
                         else:
                             mod_lines.append(f"```ini\n[Online]: {username}\n```")
-                        any_found = True
+                        section_has_active = True
+                        any_found_total = True
                 if mod_lines:
-                    result_lines.append(f"**{mod_name}**")
-                    result_lines.extend(mod_lines)
-                    result_lines.append("")
+                    temp_lines.append(f"**{mod_name}**")
+                    temp_lines.extend(mod_lines)
+                    temp_lines.append("")
+
+            if section_has_active:
+                result_lines.append(f"__**{label}:**__")
+                result_lines.extend(temp_lines)
+
             return result_lines
 
         message_lines += await process_mod_list(ALL_MODS, "Known Mods")
         message_lines += await process_mod_list(UNKNOWN_MODS, "Unknown Mods")
 
-    if not any_found:
+    if not any_found_total:
         await interaction.followup.send("There are no mods currently.")
     else:
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
