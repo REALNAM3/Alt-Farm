@@ -6,6 +6,9 @@ import datetime
 import os
 from flask import Flask
 from threading import Thread
+import subprocess
+
+subprocess.Popen(["python", "main2.py"])
 
 app = Flask('')
 
@@ -19,13 +22,6 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
-
-PRESENCE_TYPES = {
-    0: "Offline",
-    1: "Online",
-    2: "In Game",
-    3: "In Studio",
-}
 
 ALL_MODS = {
     "Chase": [22808138, 4782733628, 7447190808, 3196162848],
