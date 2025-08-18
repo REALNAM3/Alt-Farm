@@ -32,7 +32,7 @@ def keep_alive():
     t.start()
 
 def get_mods_db():
-    mongDB = MongoClient(MONGO_URI, server_api=ServerApi('1'), tls=True, tlsAllowInvalidCertificates=False, ssl_cert_reqs=ssl.CERT_REQUIRED)
+    mongDB = MongoClient(URI, server_api=ServerApi('1'), tls=True, tlsAllowInvalidCertificates=False, ssl_cert_reqs=ssl.CERT_REQUIRED)
     db = mongDB["mods_db"]
     mods_collection = db["mods"]
 
@@ -291,5 +291,6 @@ keep_alive()
 
 
 client.run(TOKEN)
+
 
 
