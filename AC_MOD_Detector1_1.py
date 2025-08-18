@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import os
 import subprocess
+import ssl
 from discord import app_commands
 from dotenv import load_dotenv
 from flask import Flask
@@ -31,7 +32,7 @@ def keep_alive():
     t.start()
 
 def get_mods_db():
-    mongDB = MongoClient(URI, server_api=ServerApi('1'))
+    mongDB = MongoClient(URI, server_api=ServerApi('1'), tls=True, tlsAllowInvalidCertificates=False, ssl_cert_reqs=ssl.CERT_REQUIRED)
     db = mongDB["mods_db"]
     mods_collection = db["mods"]
 
@@ -290,3 +291,4 @@ keep_alive()
 
 
 client.run(TOKEN)
+
