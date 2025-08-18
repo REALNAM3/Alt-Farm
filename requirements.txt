@@ -3,3 +3,4 @@ Flask
 requests
 aiohttp
 python-dotenv
+pymongo
