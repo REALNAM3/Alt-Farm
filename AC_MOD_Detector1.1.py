@@ -179,8 +179,6 @@ async def unknownmods(interaction: discord.Interaction):
     await interaction.followup.send(content)
 
 @client.tree.command(name="checkmods", description="Checks known mods every minute")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def checkmods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
     message = await interaction.followup.send("Started checking...")
@@ -287,5 +285,6 @@ async def modson(interaction: discord.Interaction):
         await interaction.followup.send("\n".join(message_lines))
 
 keep_alive()
+
 
 client.run(TOKEN)
