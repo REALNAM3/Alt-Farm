@@ -105,6 +105,7 @@ async def get_user_info(session, username: str):
 @app_commands.describe(mains="Enter the mains names separated by commas")
 @app_commands.describe(alts="Enter the alts names separated by commas (or type none)")
 async def group(interaction: discord.Interaction, group_name: str, mains: str, alts: str = "none"):
+    await interaction.response.defer()
     mains_list = [m.strip() for m in mains.split(",") if m.strip()]
     alts_list = [] if alts.lower() == "none" else [a.strip() for a in alts.split(",") if a.strip()]
 
@@ -168,4 +169,5 @@ async def snipegroup(interaction: discord.Interaction, group_name: str):
                 await interaction.channel.send(embed=embed)
 
 client.run(TOKEN)
+
 
