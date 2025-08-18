@@ -1,9 +1,21 @@
+# Exported from Render on 2025-08-18T02:14:04Z
 services:
-  - type: web
-    name: discord-bot-flask
-    env: python
-    plan: free
-    region: ohio
-    branch: main
-    buildCommand: pip install -r requirements.txt
-    startCommand: python AC_MOD_Detector1_1.py
+- type: web
+  name: Alt-Farm-1
+  runtime: python
+  repo: https://github.com/REALNAM3/Alt-Farm
+  plan: free
+  envVars:
+  - key: MONGO_URI
+    sync: false
+  - key: ROBLOXSECURITY
+    sync: false
+  - key: BOT_TOKEN2
+    sync: false
+  - key: BOT_TOKEN
+    sync: false
+  region: ohio
+  buildCommand: pip install -r requirements.txt
+  startCommand: python AC_MOD_Detector1_1.py
+  autoDeployTrigger: commit
+version: "1"
