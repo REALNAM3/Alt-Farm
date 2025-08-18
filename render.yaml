@@ -6,4 +6,4 @@ services:
     region: ohio
     branch: main
     buildCommand: pip install -r requirements.txt
-    startCommand: python AC_MOD_Detector1.1.py
+    startCommand: python AC_MOD_Detector1_1.py
