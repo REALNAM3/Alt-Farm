@@ -1,8 +1,9 @@
 import discord
-from discord import app_commands
+import ssl
 import aiohttp
 import os
 from dotenv import load_dotenv
+from discord import app_commands
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
@@ -12,7 +13,7 @@ TOKEN = os.getenv("BOT_TOKEN2")
 ROBLOSECURITY = os.getenv("ROBLOXSECURITY")
 MONGO_URI = os.getenv("MONGO_URI")
 
-cluster = MongoClient(MONGO_URI, server_api=ServerApi("1"))
+cluster = MongoClient(MONGO_URI, server_api=ServerApi('1'), tls=True, tlsAllowInvalidCertificates=False, ssl_cert_reqs=ssl.CERT_REQUIRED)
 db = cluster["bot_detector"]
 groups = db["groups"]
 
@@ -170,3 +171,4 @@ async def snipegroup(interaction: discord.Interaction, group_name: str):
                 await interaction.channel.send(embed=embed)
 
 client.run(TOKEN)
+
