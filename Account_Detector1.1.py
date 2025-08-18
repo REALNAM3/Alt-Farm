@@ -137,8 +137,6 @@ async def snipe(interaction: discord.Interaction, username: str):
 
 @client.tree.command(name="snipegroup", description="Get group info and status by group name")
 @app_commands.describe(group_name="Enter the group name")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def snipegroup(interaction: discord.Interaction, group_name: str):
     await interaction.response.defer()
 
@@ -170,3 +168,4 @@ async def snipegroup(interaction: discord.Interaction, group_name: str):
                 await interaction.channel.send(embed=embed)
 
 client.run(TOKEN)
+
