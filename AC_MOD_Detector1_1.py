@@ -15,7 +15,7 @@ load_dotenv()
 URI = os.getenv("MONGO_URI")
 TOKEN = os.getenv("BOT_TOKEN")
 
-subprocess.Popen(["python", "Account_Detector1.1.py"])
+subprocess.Popen(["python", "Account_Detector1_1.py"])
 
 app = Flask('')
 
@@ -287,5 +287,6 @@ async def modson(interaction: discord.Interaction):
         await interaction.followup.send("\n".join(message_lines))
 
 keep_alive()
+
 
 client.run(TOKEN)
