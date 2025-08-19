@@ -51,6 +51,50 @@ def get_mods_db():
 
     return KNOWN_MODS, UNKNOWN_MODS
 
+BATCH_SIZE = 50
+
+async def fetch_presences(user_ids: list[int], session: aiohttp.ClientSession) -> dict:
+    presence_dict = {}
+    for i in range(0, len(user_ids), BATCH_SIZE):
+        batch = user_ids[i:i + BATCH_SIZE]
+        try:
+            async with session.post(
+                "https://presence.roblox.com/v1/presence/users",
+                json={"userIds": batch}
+            ) as resp:
+                if resp.status != 200:
+                    continue
+                data = await resp.json()
+                for user in data.get("userPresences", []):
+                    presence_dict[int(user["userId"])] = user
+        except Exception as e:
+            print(f"[fetch_presences] Error fetching batch {batch}: {e}")
+    return presence_dict
+
+async def fetch_usernames(user_ids: list[int], session: aiohttp.ClientSession) -> dict:
+    usernames = {}
+    for i in range(0, len(user_ids), BATCH_SIZE):
+        batch = user_ids[i:i + BATCH_SIZE]
+        tasks = []
+        for uid in batch:
+            tasks.append(session.get(f"https://users.roblox.com/v1/users/{uid}"))
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        for idx, resp in enumerate(responses):
+            uid = batch[idx]
+            try:
+                if isinstance(resp, Exception):
+                    usernames[uid] = "Unknown"
+                    continue
+                async with resp:
+                    if resp.status == 200:
+                        user_data = await resp.json()
+                        usernames[uid] = user_data.get("name", "Unknown")
+                    else:
+                        usernames[uid] = "Unknown"
+            except:
+                usernames[uid] = "Unknown"
+    return usernames
+
 class MyClient(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
@@ -64,118 +108,57 @@ class MyClient(discord.Client):
     async def setup_hook(self):
         await self.tree.sync()
 
-    async def build_known_mod_status(self) -> str:
+    async def build_mod_status(self, known=True) -> str:
         KNOWN_MODS, UNKNOWN_MODS = get_mods_db()
-        ALL_MODS = list({uid for mod_name, ids in KNOWN_MODS + UNKNOWN_MODS for uid in ids})
+        mod_list = KNOWN_MODS if known else UNKNOWN_MODS
+        all_mods = list({uid for mod_name, ids in KNOWN_MODS + UNKNOWN_MODS for uid in ids})
 
         async with aiohttp.ClientSession() as session:
-            async with session.post("https://presence.roblox.com/v1/presence/users", json={"userIds": ALL_MODS}) as resp:
-                if resp.status != 200:
-                    return "Error obtaining presence."
-                data = await resp.json()
+            presence_dict = await fetch_presences(all_mods, session)
+            usernames = await fetch_usernames(all_mods, session)
 
-            presences = data.get("userPresences", [])
-            presence_dict = {user["userId"]: user["userPresenceType"] for user in presences}
+        message_lines = []
+        any_in_game = False
+        title = "Known Mods" if known else "Unknown Mods"
+        message_lines.append(f"__**{title}:**__")
 
-            message_lines = []
-            any_in_game = False
+        for mod_name, user_ids in mod_list:
+            message_lines.append(f"**{mod_name}**")
+            for uid in user_ids:
+                presence_code = presence_dict.get(uid, {}).get("userPresenceType", 0)
+                username = usernames.get(uid, "Unknown")
 
-            message_lines.append("__**Known Mods:**__")
-            for mod_name, user_ids in KNOWN_MODS:
-                message_lines.append(f"**{mod_name}**")
-                for uid in user_ids:
-                    async with session.get(f"https://users.roblox.com/v1/users/{uid}") as user_resp:
-                        if user_resp.status == 200:
-                            user_data = await user_resp.json()
-                            username = user_data.get("name", "Unknown")
-                        else:
-                            username = "Unknown"
+                if presence_code == 1:
+                    line = f"```ini\n[Online]: {username}\n```"
+                elif presence_code == 2:
+                    line = f"```diff\n+ In Game: {username}\n```"
+                    any_in_game = True
+                elif presence_code == 3:
+                    line = f"```fix\nIn Studio: {username}\n```"
+                else:
+                    line = f"```diff\n- Offline: {username}\n```"
+                message_lines.append(line)
+            message_lines.append("")
 
-                    presence_code = presence_dict.get(uid, 0)
+        status_line = "**Status: Unalt Farmable**" if any_in_game else "**Status: Alt Farmable**"
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        message_lines.append(status_line)
+        message_lines.append(f"*Last Update: {timestamp}*")
 
-                    if presence_code == 1:
-                        line = f"```ini\n[Online]: {username}\n```"
-                    elif presence_code == 2:
-                        line = f"```diff\n+ In Game: {username}\n```"
-                        any_in_game = True
-                    elif presence_code == 3:
-                        line = f"```fix\nIn Studio: {username}\n```"
-                    else:
-                        line = f"```diff\n- Offline: {username}\n```"
-                    message_lines.append(line)
-                message_lines.append("")
-
-            status_line = "**Status: Unalt Farmable**" if any_in_game else "**Status: Alt Farmable**"
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            message_lines.append(status_line)
-            message_lines.append(f"*Last Update: {timestamp}*")
-
-            return "\n".join(message_lines)
-
-    async def build_unknown_mod_status(self) -> str:
-        KNOWN_MODS, UNKNOWN_MODS = get_mods_db()
-        ALL_MODS = list({uid for mod_name, ids in KNOWN_MODS + UNKNOWN_MODS for uid in ids})
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post("https://presence.roblox.com/v1/presence/users", json={"userIds": ALL_MODS}) as resp:
-                if resp.status != 200:
-                    return "Error obtaining presence."
-                data = await resp.json()
-
-            presences = data.get("userPresences", [])
-            presence_dict = {user["userId"]: user["userPresenceType"] for user in presences}
-
-            message_lines = []
-            any_in_game = False
-
-            message_lines.append("__**Unknown Mods:**__")
-            for mod_name, user_ids in UNKNOWN_MODS.items():
-                message_lines.append(f"**{mod_name}**")
-                for uid in user_ids:
-                    async with session.get(f"https://users.roblox.com/v1/users/{uid}") as user_resp:
-                        if user_resp.status == 200:
-                            user_data = await user_resp.json()
-                            username = user_data.get("name", "Unknown")
-                        else:
-                            username = "Unknown"
-
-                    presence_code = presence_dict.get(uid, 0)
-
-                    if presence_code == 1:
-                        line = f"```ini\n[Online]: {username}\n```"
-                    elif presence_code == 2:
-                        line = f"```diff\n+ In Game: {username}\n```"
-                        any_in_game = True
-                    elif presence_code == 3:
-                        line = f"```fix\nIn Studio: {username}\n```"
-                    else:
-                        line = f"```diff\n- Offline: {username}\n```"
-                    message_lines.append(line)
-                message_lines.append("")
-
-            status_line = "**Status: Unalt Farmable**" if any_in_game else "**Status: Alt Farmable**"
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            message_lines.append(status_line)
-            message_lines.append(f"*Last Update: {timestamp}*")
-
-            return "\n".join(message_lines)
+        return "\n".join(message_lines)
 
 client = MyClient()
 
 @client.tree.command(name="mods", description="Shows if a known mod is online")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def mods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    content = await client.build_known_mod_status()
+    content = await client.build_mod_status(known=True)
     await interaction.followup.send(content)
 
 @client.tree.command(name="unknownmods", description="Shows if an unknown mod is online")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def unknownmods(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-    content = await client.build_unknown_mod_status()
+    content = await client.build_mod_status(known=False)
     await interaction.followup.send(content)
 
 @client.tree.command(name="checkmods", description="Checks known mods every minute")
@@ -187,7 +170,7 @@ async def checkmods(interaction: discord.Interaction):
         current_msg = msg
         while True:
             try:
-                content = await client.build_known_mod_status()
+                content = await client.build_mod_status(known=True)
                 await current_msg.delete()
                 current_msg = await msg.channel.send(content)
             except Exception as e:
@@ -201,8 +184,6 @@ async def checkmods(interaction: discord.Interaction):
         await interaction.followup.send("The checking is already active.")
 
 @client.tree.command(name="modson", description="Checks if any mod (known or unknown) is in game")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def modson(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
 
@@ -210,72 +191,33 @@ async def modson(interaction: discord.Interaction):
     ALL_MODS = list({uid for mod_name, ids in KNOWN_MODS + UNKNOWN_MODS for uid in ids})
     valid_user_ids = [uid for uid in ALL_MODS if uid > 0]
 
-    BATCH_SIZE = 50
-    presence_dict = {}
-    message_lines = []
-
     async with aiohttp.ClientSession() as session:
-        for i in range(0, len(valid_user_ids), BATCH_SIZE):
-            batch = valid_user_ids[i:i+BATCH_SIZE]
-            print(f"[modson] Sending batch: {batch}")
+        presence_dict = await fetch_presences(valid_user_ids, session)
+        usernames = await fetch_usernames(valid_user_ids, session)
 
-            try:
-                async with session.post(
-                    "https://presence.roblox.com/v1/presence/users",
-                    json={"userIds": batch}
-                ) as resp:
-                    print(f"[modson] Response status: {resp.status}")
-                    if resp.status != 200:
-                        continue
-                    data = await resp.json()
-                    for user in data.get("userPresences", []):
-                        presence_dict[int(user["userId"])] = user
-            except Exception as e:
-                print(f"[modson] Error fetching batch: {e}")
+    message_lines = []
+    any_found = False
 
-        any_found = False
-
-        async def process_mod_list(mod_list, label):
-            nonlocal any_found
-            result_lines = []
-            temp_lines = []
-
-            for mod_name, user_ids in mod_list:
-                mod_lines = []
-                for uid in user_ids:
-                    uid_int = int(uid)
-                    presence_info = presence_dict.get(uid_int)
-                    if presence_info and presence_info["userPresenceType"] in [1, 2]:
-                        try:
-                            async with session.get(f"https://users.roblox.com/v1/users/{uid_int}") as user_resp:
-                                if user_resp.status == 200:
-                                    user_data = await user_resp.json()
-                                    username = user_data.get("name", "Unknown")
-                                else:
-                                    username = "Unknown"
-                        except:
-                            username = "Unknown"
-
-                        if presence_info["userPresenceType"] == 2:
-                            mod_lines.append(f"```diff\n+(In Game) {username}\n```")
-                        else:
-                            mod_lines.append(f"```ini\n[Online]: {username}\n```")
-
-                        any_found = True
-
-                if mod_lines:
-                    temp_lines.append(f"**{mod_name}**")
-                    temp_lines.extend(mod_lines)
-                    temp_lines.append("")
-
-            if temp_lines:
-                result_lines.append(f"__**{label}:**__")
-                result_lines.extend(temp_lines)
-
-            return result_lines
-
-        message_lines += await process_mod_list(KNOWN_MODS, "Known Mods")
-        message_lines += await process_mod_list(UNKNOWN_MODS, "Unknown Mods")
+    for label, mod_list in [("Known Mods", KNOWN_MODS), ("Unknown Mods", UNKNOWN_MODS)]:
+        temp_lines = []
+        for mod_name, user_ids in mod_list:
+            mod_lines = []
+            for uid in user_ids:
+                presence_info = presence_dict.get(uid)
+                if presence_info and presence_info["userPresenceType"] in [1, 2]:
+                    username = usernames.get(uid, "Unknown")
+                    if presence_info["userPresenceType"] == 2:
+                        mod_lines.append(f"```diff\n+(In Game) {username}\n```")
+                    else:
+                        mod_lines.append(f"```ini\n[Online]: {username}\n```")
+                    any_found = True
+            if mod_lines:
+                temp_lines.append(f"**{mod_name}**")
+                temp_lines.extend(mod_lines)
+                temp_lines.append("")
+        if temp_lines:
+            message_lines.append(f"__**{label}:**__")
+            message_lines.extend(temp_lines)
 
     if not any_found:
         await interaction.followup.send("There are no mods currently.")
@@ -285,6 +227,5 @@ async def modson(interaction: discord.Interaction):
         await interaction.followup.send("\n".join(message_lines))
 
 keep_alive()
-
 
 client.run(TOKEN)
