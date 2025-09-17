@@ -87,9 +87,12 @@ async def get_user_info(session, username: str):
     if presence_type == 1:
         embed = discord.Embed(title=f"{display_name} (@{username}) is online", color=discord.Color.blue())
     elif presence_type == 2:
+        lobby = False
+        if place_id == 1708400489:
+            lobby = True
         embed = discord.Embed(
             title=f"{display_name} (@{username}) is playing",
-            description=f"Game: `{game_name}`\nPlaceId: `{place_id}`\nJobId: `{job_id}`",
+            description=f"Game: `{game_name}`\nPlaceId: `{place_id}`\nJobId: `{job_id}`\nLobby: `{lobby}`",
             color=discord.Color.green()
         )
     else:
