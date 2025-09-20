@@ -75,24 +75,37 @@ async def fetch_usernames(user_ids: list[int], session: aiohttp.ClientSession) -
     usernames = {}
     for i in range(0, len(user_ids), BATCH_SIZE):
         batch = user_ids[i:i + BATCH_SIZE]
-        tasks = []
-        for uid in batch:
-            tasks.append(session.get(f"https://users.roblox.com/v1/users/{uid}"))
-        responses = await asyncio.gather(*tasks, return_exceptions=True)
-        for idx, resp in enumerate(responses):
-            uid = batch[idx]
-            try:
-                if isinstance(resp, Exception):
-                    usernames[uid] = "Unknown"
-                    continue
-                async with resp:
-                    if resp.status == 200:
-                        user_data = await resp.json()
-                        usernames[uid] = user_data.get("name", "Unknown")
-                    else:
+        payload = {
+            "userIds": batch,
+            "excludeBannedUsers": True
+        }
+
+        try:
+            async with session.post(                
+                "https://users.roblox.com/v1/users",
+                json=payload,
+                headers={"Content-Type": "application/json", "Accept": "application/json"}
+            ) as resp:
+                if resp.status != 200:
+                    for uid in batch:
                         usernames[uid] = "Unknown"
-            except:
+                    continue
+
+                data = await resp.json()
+                for user in data.get("data", []):
+                    uid = user.get("id")
+                    name = user.get("name", "Unknown")
+                    usernames[uid] = name
+                
+                for uid in batch:
+                    if uid not in usernames:
+                        usernames[uid] = "Unknown"
+                
+        except Exception as e:
+            print(f"[fetch_usernames] Error batch {batch}; {e}")
+            for uid in batch:
                 usernames[uid] = "Unknown"
+    
     return usernames
 
 class MyClient(discord.Client):
